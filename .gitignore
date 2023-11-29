@@ -1,0 +1,7 @@
+build/
+dist/
+CrystalNet/__pycache__/
+CrystalNet/feature/__pycache__/
+CrystalNet/gnnMC/__pycache__/
+CrystalNet/model/__pycache__/
+CrystalNet.egg-info
