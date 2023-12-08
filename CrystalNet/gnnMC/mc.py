@@ -1,8 +1,8 @@
 import random
 from tqdm import tqdm
 import os
-from gnnMC.featurization_MC import Feature
-from gnnMC.model import ThreeBody
+from CrystalNet.feature import ThreeBodyFeature
+from CrystalNet.model import ThreeBody
 from ovito.io import import_file
 import torch
 from torch_geometric.loader import DataLoader

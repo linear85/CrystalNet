@@ -4,54 +4,19 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
-def trainMode(model: torch.nn.Module,
-              train_data: DataLoader, 
-              test_data: DataLoader, 
-              device = 'cuda', 
-              loss_fn_train = torch.nn.MSELoss(), 
-              loss_fn_test  = torch.nn.L1Loss(),
-              optimizer = torch.optim.SGD,
-              lr = 0.0001,
-              epoch = 500,
-              num_atom = 54,
-              seed = 4512151) -> list[list[float]]:
-    torch.manual_seed(seed)
-    cur_optimizer = optimizer(model.parameters(), lr=lr)
-    model.to(device)
-    res = []
-    for i in range(epoch):
-        train_loss_list = []
-        for batch in tqdm(train_data):
-            batch.to(device)
-            pred = model(batch)
-            loss = loss_fn_train(pred, batch.y_sum)
-            cur_optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
-            cur_optimizer.step()
-            train_loss_list.append(np.sqrt(loss.item()))
-        train_mean_loss = np.mean(train_loss_list)/num_atom
-        test_loss_list = []
-        for batch in tqdm(test_data):
-            batch.to(device)
-            pred = model(batch)
-            loss = loss_fn_test(pred, batch.y_sum)
-            test_loss_list.append(loss.item())
-        test_mean_loss = np.mean(test_loss_list)/num_atom
-
-        print(f"Epoch at {i}, training_loss is {train_mean_loss}, test_loss is {test_mean_loss}")
-        res.append([train_mean_loss, test_mean_loss])
-    return res
 
 
 class trainer:
     def __init__(self, 
                  model: torch.nn.Module, 
+                 level = "sample",
                  device = 'cuda', 
                  optimizer = torch.optim.SGD, 
                  lr = 0.0001, 
                  seed = 4512151) -> None:
         self.model = model
+        assert level in ("sample", "node"), "the level should be sample or node"
+        self.level = level
         self.device = device
         torch.manual_seed(seed)
         self.optimizer = optimizer(model.parameters(), lr=lr)
@@ -60,11 +25,10 @@ class trainer:
     def train(self, 
               train_data: DataLoader, 
               validate_data: DataLoader, 
-              model_path: str,
               loss_path: str,
+              model_path: str = None,
               epoch: int = 500, 
               save_model_criteria: tuple[float] = None,
-              save_model = False,
               loss_fn_train = torch.nn.MSELoss(), 
               loss_fn_validation = torch.nn.L1Loss()) -> None:
         losses = []
@@ -82,7 +46,7 @@ class trainer:
                     return
 
         self.savePerformance(losses, loss_path)
-        if save_model:
+        if save_model_criteria:
             self.saveModel(model_path)
     
     def update(self, data: DataLoader, loss_fn = torch.nn.MSELoss(), clip=1) -> float:
@@ -90,7 +54,11 @@ class trainer:
         for batch in tqdm(data):
             batch.to(self.device)
             pred = self.model(batch)
-            loss = loss_fn(pred, batch.y_sum)
+            if self.level == "sample":
+                y = batch.y_sum
+            else:
+                y = batch.y_each
+            loss = loss_fn(pred.squeeze(), y)
             self.optimizer.zero_grad()
             loss.backward()
             if clip:
@@ -104,7 +72,11 @@ class trainer:
         for batch in tqdm(data):
             batch.to(self.device)
             pred = self.model(batch)
-            loss = loss_fn(pred, batch.y_sum)
+            if self.level == "sample":
+                y = batch.y_sum
+            else:
+                y = batch.y_each
+            loss = loss_fn(pred.squeeze(), y)
             losses.append(loss.item())
         return np.mean(losses)
     
