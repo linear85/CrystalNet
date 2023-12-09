@@ -58,7 +58,7 @@ class ThreeBody_cff_1_2_cfs(torch.nn.Module):
     
     def forward(self, batch) -> torch.tensor:
         out_cff_1 = torch.sum(self.layers_cff_1(batch.x_cff_1), axis=1)
-        out_cff_2 = torch.sum(self.layers_cff_2(batch.x_cff_1), axis=1)
+        out_cff_2 = torch.sum(self.layers_cff_2(batch.x_cff_2), axis=1)
         out_cfs   = torch.sum(self.layers_cfs(batch.x_cfs), axis=1)
         return torch.sum(self.out(torch.concat((out_cff_1, out_cff_2, out_cfs), axis=1)))
 

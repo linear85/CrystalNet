@@ -14,12 +14,13 @@ class trainer:
                  optimizer = torch.optim.SGD, 
                  lr = 0.0001, 
                  seed = 4512151) -> None:
+        torch.manual_seed(seed)
         self.model = model
         assert level in ("sample", "node"), "the level should be sample or node"
         self.level = level
         self.device = device
         torch.manual_seed(seed)
-        self.optimizer = optimizer(model.parameters(), lr=lr)
+        self.optimizer = optimizer(self.model.parameters(), lr=lr)
         self.model.to(device)
     
     def train(self, 
@@ -58,7 +59,7 @@ class trainer:
                 y = batch.y_sum
             else:
                 y = batch.y_each
-            loss = loss_fn(pred.squeeze(), y)
+            loss = loss_fn(pred, y)
             self.optimizer.zero_grad()
             loss.backward()
             if clip:
@@ -76,7 +77,7 @@ class trainer:
                 y = batch.y_sum
             else:
                 y = batch.y_each
-            loss = loss_fn(pred.squeeze(), y)
+            loss = loss_fn(pred, y)
             losses.append(loss.item())
         return np.mean(losses)
     
