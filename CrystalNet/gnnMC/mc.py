@@ -8,8 +8,10 @@ import torch
 from torch_geometric.loader import DataLoader
 import time
 import pandas as pd
+import numpy as np
 
 
+# class to 
 class node:
     def __init__(self, _type: int, cff_index: list[tuple[int]] = [], cfs_index: list[tuple[int]] = []) -> None:
         self._type = _type
@@ -19,15 +21,21 @@ class node:
 
 class GNN_MC:
     def __init__(self, dump_path: str, model_path: str) -> None:
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print("Device: ", self.device)
         pipeline = import_file(dump_path)
         self.ovito_data = pipeline.compute()
         self._types = list(self.ovito_data.particles.particle_types)
-        self.feature, cff_index, cfs_index = Feature(dump_path).threeBodyFeatures()
+        self.feature, cff_index, _, cfs_index = ThreeBodyFeature(dump_path, PE=[-1]).threeBodyFeatures()
+        self.feature.x_cff_1 = self.feature.x_cff_1.view((8192, 24, 3, 4))
+        self.feature.x_cfs = self.feature.x_cfs.view((8192, 24, 3, 4))
         print("read initial structure done!")
         self.nodes = self.__mapNode(cff_index, cfs_index)
         print("map node done!")
         self.model = self.readModel(model_path)
         self.cur_PE = self.model_prediction()
+        self.T = 300
+        
     
     def __mapNode(self, cff_index, cfs_index):
         nodes = [node(i, [], []) for i in self._types]
@@ -41,7 +49,6 @@ class GNN_MC:
             node_index = cfs_index[idx]
             cur_node = nodes[node_index]
             cur_node.cfs_index.append(cur_index)
-       
         return nodes
 
     @staticmethod
@@ -59,21 +66,23 @@ class GNN_MC:
             if idx % out_step == 0:
                 print(f"{idx} step: {self.cur_PE}")
 
-    @staticmethod
-    def readModel(path: str) -> torch.nn:
-        model = ThreeBody()
+    def readModel(self, path: str, hidden_size=1024) -> torch.nn:
+        model = ThreeBody(hidden_size=hidden_size)
         model.load_state_dict(torch.load(path))
+        model.to(self.device)
         return model
 
     def model_prediction(self) -> torch.tensor:
         cur_node = self.feature.clone()
-        cur_node.x_cff = cur_node.x_cff.reshape((8192, 24, 12))
+        cur_node.x_cff_1 = cur_node.x_cff_1.reshape((8192, 24, 12))
         cur_node.x_cfs = cur_node.x_cfs.reshape((8192, 24, 12))
+        cur_node.to(self.device)
         return self.model(cur_node)
             
     def accept(self, atom_1: int, atom_2: int) -> None:
         next_PE = self.model_prediction()
-        if (next_PE < self.cur_PE):
+        energy_diff = next_PE - self.cur_PE
+        if (energy_diff <= 0) or (np.random.uniform() < torch.exp(-1 * energy_diff / (8.6173303 * self.T / 100000))):
             self.cur_PE = next_PE
         else:
             self.swap(atom_1, atom_2)
@@ -89,7 +98,7 @@ class GNN_MC:
         self.nodes[pos]._type = _type
         onehot_type = self.toOneHot(_type)
         for idx in self.nodes[pos].cff_index:
-            self.feature.x_cff[idx] = onehot_type
+            self.feature.x_cff_1[idx] = onehot_type
         for idx in self.nodes[pos].cfs_index:
             self.feature.x_cfs[idx] = onehot_type
     
