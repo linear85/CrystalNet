@@ -27,6 +27,7 @@ class trainer:
               train_data: DataLoader, 
               validate_data: DataLoader, 
               loss_path: str,
+              clip: float = 10,
               model_path: str = None,
               epoch: int = 500, 
               save_model_criteria: tuple[float] = None,
@@ -34,7 +35,7 @@ class trainer:
               loss_fn_validation = torch.nn.L1Loss()) -> None:
         losses = []
         for i in range(epoch):
-            train_loss = self.update(train_data, loss_fn_train)
+            train_loss = self.update(train_data, clip, loss_fn_train)
             validate_loss = self.validate(validate_data, loss_fn_validation)
             print(f"Epoch at {i}, training_loss is {train_loss}, test_loss is {validate_loss}")
             losses.append([train_loss, validate_loss])
@@ -50,7 +51,37 @@ class trainer:
         if save_model_criteria:
             self.saveModel(model_path)
     
-    def update(self, data: DataLoader, loss_fn = torch.nn.MSELoss(), clip=1) -> float:
+    def trainTest(self, 
+              train_data: DataLoader, 
+              validate_data: DataLoader, 
+              test_data: DataLoader,
+              loss_path: str,
+              clip: float = 10,
+              model_path: str = None,
+              epoch: int = 500, 
+              save_model_criteria: tuple[float] = None,
+              loss_fn_train = torch.nn.MSELoss(), 
+              loss_fn_validation = torch.nn.L1Loss()) -> None:
+        losses = []
+        for i in range(epoch):
+            train_loss = self.update(train_data, clip, loss_fn_train)
+            validate_loss = self.validate(validate_data, loss_fn_validation)
+            test_loss = self.validate(test_data, loss_fn_validation)
+            print(f"Epoch at {i}, training_loss is {train_loss}, validate_loss is {validate_loss}, test_loss in {test_loss}")
+            losses.append([train_loss, validate_loss, test_loss])
+            if i%500 == 0:
+                self.savePerformance(losses, loss_path)
+            if save_model_criteria:
+                if train_loss < save_model_criteria[0] and validate_loss < save_model_criteria[1] and test_loss < save_model_criteria[2]:
+                    self.saveModel(model_path)
+                    self.savePerformance(losses, loss_path)
+                    return
+
+        self.savePerformance(losses, loss_path)
+        if save_model_criteria:
+            self.saveModel(model_path)
+    
+    def update(self, data: DataLoader, clip: float, loss_fn = torch.nn.MSELoss()) -> float:
         losses = []
         for batch in tqdm(data):
             batch.to(self.device)
@@ -59,7 +90,7 @@ class trainer:
                 y = batch.y_sum
             else:
                 y = batch.y_each
-            loss = loss_fn(pred, y)
+            loss = loss_fn(pred.squeeze(), y)
             self.optimizer.zero_grad()
             loss.backward()
             if clip:
@@ -77,7 +108,7 @@ class trainer:
                 y = batch.y_sum
             else:
                 y = batch.y_each
-            loss = loss_fn(pred, y)
+            loss = loss_fn(pred.squeeze(), y)
             losses.append(loss.item())
         return np.mean(losses)
     

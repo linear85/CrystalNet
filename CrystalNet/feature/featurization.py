@@ -35,9 +35,8 @@ class ThreeBodyFeature:
         cfs_index   = []
         for idx in range(self.data.particles.count):
             [first, second, _] = self.graph[idx]
-            cur_type = self.types[idx]
-            cur_cff_1, cur_cff_2, cur_cff_1_index, cur_cff_2_index = self.__get_cff_1_2(cur_type, first)
-            cur_cfs, cur_cfs_index = self.__get_cfs(cur_type, first, second)
+            cur_cff_1, cur_cff_2, cur_cff_1_index, cur_cff_2_index = self.__get_cff_1_2(idx, first)
+            cur_cfs, cur_cfs_index = self.__get_cfs(idx, first, second)
             cff_1.append(cur_cff_1)
             cff_2.append(cur_cff_2)
             cfs.append(cur_cfs)

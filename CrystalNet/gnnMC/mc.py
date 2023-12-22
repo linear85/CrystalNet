@@ -20,7 +20,7 @@ class node:
 
 
 class GNN_MC:
-    def __init__(self, dump_path: str, model_path: str) -> None:
+    def __init__(self, dump_path: str, model_path: str, T: float=300) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("Device: ", self.device)
         pipeline = import_file(dump_path)
@@ -34,7 +34,7 @@ class GNN_MC:
         print("map node done!")
         self.model = self.readModel(model_path)
         self.cur_PE = self.model_prediction()
-        self.T = 300
+        self.T = T
         
     
     def __mapNode(self, cff_index, cfs_index):
@@ -58,13 +58,21 @@ class GNN_MC:
         n3 = idx        %   3
         return (n1, n2, n3)
 
-    def run(self, steps: int, out_step: int = 100) -> None:
+    def run(self, steps: int, print_step: int = 100, dump_step: int = 10000) -> None:
+        PE = []
         for idx in tqdm(range(steps)):
             atom_1, atom_2 = self.randomTwoAtoms()
             self.swap(atom_1, atom_2)
             self.accept(atom_1, atom_2)
-            if idx % out_step == 0:
-                print(f"{idx} step: {self.cur_PE}")
+            PE.append(self.cur_PE)
+            if idx % print_step == 0:
+                print(f"\n{idx} step: {self.cur_PE}")
+            if idx % dump_step == 0:
+                output_path = f"dump_{idx}"
+                self.saveStructure(output_path)
+        output_path = f"dump_{steps}"
+        self.saveStructure(output_path)
+        pd.DataFrame(PE).T.to_excel("PE.xlsx")
 
     def readModel(self, path: str, hidden_size=1024) -> torch.nn:
         model = ThreeBody(hidden_size=hidden_size)
@@ -72,17 +80,18 @@ class GNN_MC:
         model.to(self.device)
         return model
 
-    def model_prediction(self) -> torch.tensor:
+    def model_prediction(self) -> float:
         cur_node = self.feature.clone()
         cur_node.x_cff_1 = cur_node.x_cff_1.reshape((8192, 24, 12))
         cur_node.x_cfs = cur_node.x_cfs.reshape((8192, 24, 12))
         cur_node.to(self.device)
-        return self.model(cur_node)
+        cur_pe = self.model(cur_node)
+        return cur_pe.item()
             
     def accept(self, atom_1: int, atom_2: int) -> None:
         next_PE = self.model_prediction()
         energy_diff = next_PE - self.cur_PE
-        if (energy_diff <= 0) or (np.random.uniform() < torch.exp(-1 * energy_diff / (8.6173303 * self.T / 100000))):
+        if (energy_diff <= 0) or (np.random.uniform() < np.exp(-1 * energy_diff / (8.6173303 * self.T / 100000))):
             self.cur_PE = next_PE
         else:
             self.swap(atom_1, atom_2)
