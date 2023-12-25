@@ -11,7 +11,6 @@ import pandas as pd
 import numpy as np
 
 
-# class to 
 class node:
     def __init__(self, _type: int, cff_index: list[tuple[int]] = [], cfs_index: list[tuple[int]] = []) -> None:
         self._type = _type
@@ -36,7 +35,6 @@ class GNN_MC:
         self.cur_PE = self.model_prediction()
         self.T = T
         
-    
     def __mapNode(self, cff_index, cfs_index):
         nodes = [node(i, [], []) for i in self._types]
         for idx in range(len(cff_index)):
@@ -72,9 +70,12 @@ class GNN_MC:
                 self.saveStructure(output_path)
         output_path = f"dump_{steps}"
         self.saveStructure(output_path)
-        pd.DataFrame(PE).T.to_excel("PE.xlsx")
+        with open("PE.txt", 'w') as f:
+            PE = [str(i) for i in PE]
+            f.write("\n".join(PE))
+            f.close()
 
-    def readModel(self, path: str, hidden_size=1024) -> torch.nn:
+    def readModel(self, path: str, hidden_size=2048) -> torch.nn:
         model = ThreeBody(hidden_size=hidden_size)
         model.load_state_dict(torch.load(path))
         model.to(self.device)
@@ -102,7 +103,6 @@ class GNN_MC:
         self.__changeAtom(atom_1_pos, atom_2_type)
         self.__changeAtom(atom_2_pos, atom_1_type)
   
-
     def __changeAtom(self, pos: int, _type: int) -> None:
         self.nodes[pos]._type = _type
         onehot_type = self.toOneHot(_type)

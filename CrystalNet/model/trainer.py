@@ -37,7 +37,7 @@ class trainer:
         for i in range(epoch):
             train_loss = self.update(train_data, clip, loss_fn_train)
             validate_loss = self.validate(validate_data, loss_fn_validation)
-            print(f"Epoch at {i}, training_loss is {train_loss}, test_loss is {validate_loss}")
+            print(f"Epoch at {i}, training_loss is {train_loss}, validate_loss is {validate_loss}")
             losses.append([train_loss, validate_loss])
             if i%500 == 0:
                 self.savePerformance(losses, loss_path)
