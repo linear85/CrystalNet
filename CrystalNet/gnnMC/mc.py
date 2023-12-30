@@ -19,7 +19,7 @@ class node:
 
 
 class GNN_MC:
-    def __init__(self, dump_path: str, model_path: str, T: float=300) -> None:
+    def __init__(self, dump_path: str, model_path: str, T: float=300, stop=True) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("Device: ", self.device)
         pipeline = import_file(dump_path)
@@ -34,6 +34,8 @@ class GNN_MC:
         self.model = self.readModel(model_path)
         self.cur_PE = self.model_prediction()
         self.T = T
+        self.decrease = []
+        self.stop = stop
         
     def __mapNode(self, cff_index, cfs_index):
         nodes = [node(i, [], []) for i in self._types]
@@ -68,6 +70,10 @@ class GNN_MC:
             if idx % dump_step == 0:
                 output_path = f"dump_{idx}"
                 self.saveStructure(output_path)
+            if self.stop:
+                if self.__stop():
+                    print("Stop due to no decrease in PE")
+                    break
         output_path = f"dump_{steps}"
         self.saveStructure(output_path)
         with open("PE.txt", 'w') as f:
@@ -92,6 +98,7 @@ class GNN_MC:
     def accept(self, atom_1: int, atom_2: int) -> None:
         next_PE = self.model_prediction()
         energy_diff = next_PE - self.cur_PE
+        self.decrease.append(energy_diff)
         if (energy_diff <= 0) or (np.random.uniform() < np.exp(-1 * energy_diff / (8.6173303 * self.T / 100000))):
             self.cur_PE = next_PE
         else:
@@ -117,6 +124,9 @@ class GNN_MC:
             atom_2 = random.randint(0, self.ovito_data.particles.count-1)
             if (atom_2 != atom_1 and self.nodes[atom_1]._type != self.nodes[atom_2]._type):
                 return atom_1, atom_2
+    
+    def __stop(self) -> bool:
+        return len(self.decrease) > 10000 and np.mean(self.decrease[-1000:]) >= -1E-6
 
     def changeComp(self, template: str, output_path: str, types: list[int]) -> None:
         s = open(template, 'r')
