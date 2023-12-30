@@ -98,9 +98,9 @@ class GNN_MC:
     def accept(self, atom_1: int, atom_2: int) -> None:
         next_PE = self.model_prediction()
         energy_diff = next_PE - self.cur_PE
-        self.decrease.append(energy_diff)
         if (energy_diff <= 0) or (np.random.uniform() < np.exp(-1 * energy_diff / (8.6173303 * self.T / 100000))):
             self.cur_PE = next_PE
+            self.decrease.append(energy_diff)
         else:
             self.swap(atom_1, atom_2)
     
