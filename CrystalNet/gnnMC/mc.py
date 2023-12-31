@@ -126,7 +126,7 @@ class GNN_MC:
                 return atom_1, atom_2
     
     def __stop(self) -> bool:
-        return len(self.decrease) > 10000 and np.mean(self.decrease[-1000:]) >= -1E-6
+        return len(self.decrease) > 10000 and np.mean(self.decrease[-100:]) >= -1E-6
 
     def changeComp(self, template: str, output_path: str, types: list[int]) -> None:
         s = open(template, 'r')
