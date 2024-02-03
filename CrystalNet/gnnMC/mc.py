@@ -25,9 +25,10 @@ class GNN_MC:
         pipeline = import_file(dump_path)
         self.ovito_data = pipeline.compute()
         self._types = list(self.ovito_data.particles.particle_types)
+        self.number = self.ovito_data.particles.count
         self.feature, cff_index, _, cfs_index = ThreeBodyFeature(dump_path, PE=[-1]).threeBodyFeatures()
-        self.feature.x_cff_1 = self.feature.x_cff_1.view((8192, 24, 3, 4))
-        self.feature.x_cfs = self.feature.x_cfs.view((8192, 24, 3, 4))
+        self.feature.x_cff_1 = self.feature.x_cff_1.view((self.number, 24, 3, 4))
+        self.feature.x_cfs = self.feature.x_cfs.view((self.number, 24, 3, 4))
         print("read initial structure done!")
         self.nodes = self.__mapNode(cff_index, cfs_index)
         print("map node done!")
@@ -36,6 +37,7 @@ class GNN_MC:
         self.T = T
         self.decrease = []
         self.stop = stop
+        self.template = dump_path
         
     def __mapNode(self, cff_index, cfs_index):
         nodes = [node(i, [], []) for i in self._types]
@@ -89,8 +91,8 @@ class GNN_MC:
 
     def model_prediction(self) -> float:
         cur_node = self.feature.clone()
-        cur_node.x_cff_1 = cur_node.x_cff_1.reshape((8192, 24, 12))
-        cur_node.x_cfs = cur_node.x_cfs.reshape((8192, 24, 12))
+        cur_node.x_cff_1 = cur_node.x_cff_1.reshape((self.number, 24, 12))
+        cur_node.x_cfs = cur_node.x_cfs.reshape((self.number, 24, 12))
         cur_node.to(self.device)
         cur_pe = self.model(cur_node)
         return cur_pe.item()
@@ -128,8 +130,8 @@ class GNN_MC:
     def __stop(self) -> bool:
         return len(self.decrease) > 10000 and np.mean(self.decrease[-100:]) >= -1E-6
 
-    def changeComp(self, template: str, output_path: str, types: list[int]) -> None:
-        s = open(template, 'r')
+    def changeComp(self, output_path: str, types: list[int]) -> None:
+        s = open(self.template, 'r')
         First_Part = ""
         while True:
             line = s.readline()
@@ -155,11 +157,9 @@ class GNN_MC:
         f_write.close()
         os.remove("tmp.lmp")
 
-    def saveStructure(self, output_path: str, output_template = "template.data") -> None:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        output_template = os.path.join(base_path, output_template)
+    def saveStructure(self, output_path: str) -> None:
         types = [i._type for i in self.nodes]
-        self.changeComp(output_template, output_path, types)
+        self.changeComp(output_path, types)
 
     @staticmethod
     def toOneHot(atom_type: int) -> torch.tensor:
