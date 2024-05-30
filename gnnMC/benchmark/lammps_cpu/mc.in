@@ -1,0 +1,61 @@
+variable        temperature equal 300  
+variable        nsteps_run equal  1000 
+variable        nsteps_dump equal 1000
+variable        N equal 1 
+variable        X equal 1 
+
+# general setting
+units           metal
+boundary        p p p
+dimension       3
+atom_style      atomic
+
+# set up structure
+read_data       25_25_25_25.lmp
+
+#Masses
+mass 1 95.95
+mass 2 92.90638
+mass 3 180.94788
+mass 4 183.8
+
+# set up interaction
+
+pair_style hybrid/overlay mliap model nn 3_NN.txt descriptor sna 3_DescriptorParam.txt zbl 1.0 2.1
+pair_coeff 1 1 zbl 42.0 42.0
+pair_coeff 1 2 zbl 42.0 41.0
+pair_coeff 1 3 zbl 42.0 73.0
+pair_coeff 1 4 zbl 42.0 74.0
+pair_coeff 2 2 zbl 41.0 41.0
+pair_coeff 2 3 zbl 41.0 73.0
+pair_coeff 2 4 zbl 41.0 74.0
+pair_coeff 3 3 zbl 73.0 73.0
+pair_coeff 3 4 zbl 73.0 74.0
+pair_coeff 4 4 zbl 74.0 74.0
+pair_coeff * * mliap Mo Nb Ta W
+
+
+
+neighbor 1.0 bin
+neigh_modify every 1 delay 5 check yes
+
+
+reset_timestep  0
+
+# what and how to run
+
+fix            mc1 all atom/swap $N $X 20186 ${temperature} types 1 2 
+fix            mc2 all atom/swap $N $X 86273 ${temperature} types 1 3
+fix            mc3 all atom/swap $N $X 45381 ${temperature} types 1 4
+fix            mc4 all atom/swap $N $X 16035 ${temperature} types 2 3
+fix            mc5 all atom/swap $N $X 52791 ${temperature} types 2 4
+fix            mc6 all atom/swap $N $X 93824 ${temperature} types 3 4 
+
+thermo         100
+thermo_style   custom step temp atoms pe ke etotal lx fmax f_mc1[1] f_mc1[2] f_mc2[2] f_mc3[2] f_mc4[2] f_mc5[2] f_mc6[2]
+dump           1 all custom ${nsteps_dump}  mc.*.dump id type x y z
+timestep       0.001 
+neighbor 1.0 bin
+neigh_modify every 1 delay 5 check yes
+run            ${nsteps_run}
+

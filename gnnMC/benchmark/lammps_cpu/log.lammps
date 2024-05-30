@@ -1,0 +1,161 @@
+LAMMPS (23 Jun 2022 - Update 1)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+Loaded 1 plugins from C:\Users\89721\AppData\Local\LAMMPS 64-bit 23Jun2022\plugins
+variable        temperature equal 300
+variable        nsteps_run equal  1000
+variable        nsteps_dump equal 1000
+variable        N equal 1
+variable        X equal 1
+
+# general setting
+units           metal
+boundary        p p p
+dimension       3
+atom_style      atomic
+
+# set up structure
+read_data       25_25_25_25.lmp
+Reading data file ...
+  orthogonal box = (0 0 0) to (51.2 51.2 51.2)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  8192 atoms
+  read_data CPU = 0.014 seconds
+
+#Masses
+mass 1 95.95
+mass 2 92.90638
+mass 3 180.94788
+mass 4 183.8
+
+# set up interaction
+
+pair_style hybrid/overlay mliap model nn 3_NN.txt descriptor sna 3_DescriptorParam.txt zbl 1.0 2.1
+SNAP keyword rcutfac 4.7 
+SNAP keyword twojmax 6 
+SNAP keyword nelems 4 
+SNAP keyword elems Mo Nb Ta W 
+SNAP keyword radelems 0.5 0.5 0.5 0.5 
+SNAP keyword welems 0.4 0.6 0.7 0.5 
+SNAP keyword rfac0 0.99363 
+SNAP keyword rmin0 0 
+SNAP keyword switchflag 1 
+SNAP keyword bzeroflag 0 
+pair_coeff 1 1 zbl 42.0 42.0
+pair_coeff 1 2 zbl 42.0 41.0
+pair_coeff 1 3 zbl 42.0 73.0
+pair_coeff 1 4 zbl 42.0 74.0
+pair_coeff 2 2 zbl 41.0 41.0
+pair_coeff 2 3 zbl 41.0 73.0
+pair_coeff 2 4 zbl 41.0 74.0
+pair_coeff 3 3 zbl 73.0 73.0
+pair_coeff 3 4 zbl 73.0 74.0
+pair_coeff 4 4 zbl 74.0 74.0
+pair_coeff * * mliap Mo Nb Ta W
+
+
+
+neighbor 1.0 bin
+neigh_modify every 1 delay 5 check yes
+
+
+reset_timestep  0
+
+# what and how to run
+
+fix            mc1 all atom/swap $N $X 20186 ${temperature} types 1 2
+fix            mc1 all atom/swap 1 $X 20186 ${temperature} types 1 2
+fix            mc1 all atom/swap 1 1 20186 ${temperature} types 1 2
+fix            mc1 all atom/swap 1 1 20186 300 types 1 2
+fix            mc2 all atom/swap $N $X 86273 ${temperature} types 1 3
+fix            mc2 all atom/swap 1 $X 86273 ${temperature} types 1 3
+fix            mc2 all atom/swap 1 1 86273 ${temperature} types 1 3
+fix            mc2 all atom/swap 1 1 86273 300 types 1 3
+fix            mc3 all atom/swap $N $X 45381 ${temperature} types 1 4
+fix            mc3 all atom/swap 1 $X 45381 ${temperature} types 1 4
+fix            mc3 all atom/swap 1 1 45381 ${temperature} types 1 4
+fix            mc3 all atom/swap 1 1 45381 300 types 1 4
+fix            mc4 all atom/swap $N $X 16035 ${temperature} types 2 3
+fix            mc4 all atom/swap 1 $X 16035 ${temperature} types 2 3
+fix            mc4 all atom/swap 1 1 16035 ${temperature} types 2 3
+fix            mc4 all atom/swap 1 1 16035 300 types 2 3
+fix            mc5 all atom/swap $N $X 52791 ${temperature} types 2 4
+fix            mc5 all atom/swap 1 $X 52791 ${temperature} types 2 4
+fix            mc5 all atom/swap 1 1 52791 ${temperature} types 2 4
+fix            mc5 all atom/swap 1 1 52791 300 types 2 4
+fix            mc6 all atom/swap $N $X 93824 ${temperature} types 3 4
+fix            mc6 all atom/swap 1 $X 93824 ${temperature} types 3 4
+fix            mc6 all atom/swap 1 1 93824 ${temperature} types 3 4
+fix            mc6 all atom/swap 1 1 93824 300 types 3 4
+
+thermo         100
+thermo_style   custom step temp atoms pe ke etotal lx fmax f_mc1[1] f_mc1[2] f_mc2[2] f_mc3[2] f_mc4[2] f_mc5[2] f_mc6[2]
+dump           1 all custom ${nsteps_dump}  mc.*.dump id type x y z
+dump           1 all custom 1000  mc.*.dump id type x y z
+timestep       0.001
+neighbor 1.0 bin
+neigh_modify every 1 delay 5 check yes
+run            ${nsteps_run}
+run            1000
+WARNING: No fixes with time integration, atoms won't move (src/verlet.cpp:60)
+Neighbor list info ...
+  update every 1 steps, delay 5 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 5.7
+  ghost atom cutoff = 5.7
+  binsize = 2.85, bins = 18 18 18
+  2 neighbor lists, perpetual/occasional/extra = 2 0 0
+  (1) pair mliap, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+  (2) pair zbl, perpetual, half/full from (1)
+      attributes: half, newton on
+      pair build: halffull/newton
+      stencil: none
+      bin: none
+Per MPI rank memory allocation (min/avg/max) = 1608 | 1608 | 1608 Mbytes
+   Step          Temp         Atoms        PotEng         KinEng         TotEng           Lx            Fmax         f_mc1[1]       f_mc1[2]       f_mc2[2]       f_mc3[2]       f_mc4[2]       f_mc5[2]       f_mc6[2]   
+         0   0                   8192  -94113.6        0             -94113.6        51.2           1.5418228      0              0              0              0              0              0              0            
+       100   0                   8192  -94141.791      0             -94141.791      51.2           1.599062       100            55             54             66             70             57             54           
+       200   0                   8192  -94168.51       0             -94168.51       51.2           1.5350781      200            108            97             132            132            116            109          
+       300   0                   8192  -94187.199      0             -94187.199      51.2           1.5654905      300            153            137            188            198            168            151          
+       400   0                   8192  -94204.304      0             -94204.304      51.2           1.5625418      400            186            170            241            262            215            190          
+       500   0                   8192  -94217.813      0             -94217.813      51.2           1.4799022      500            212            195            291            322            256            231          
+       600   0                   8192  -94229.731      0             -94229.731      51.2           1.4879911      600            241            225            342            386            302            266          
+       700   0                   8192  -94239.834      0             -94239.834      51.2           1.4769281      700            266            243            388            448            340            308          
+       800   0                   8192  -94248.325      0             -94248.325      51.2           1.5020058      800            297            265            441            503            376            341          
+       900   0                   8192  -94256.693      0             -94256.693      51.2           1.5580906      900            317            284            483            557            424            363          
+      1000   0                   8192  -94263.639      0             -94263.639      51.2           1.5578738      1000           340            295            528            616            456            396          
+Loop time of 9965.54 on 1 procs for 1000 steps with 8192 atoms
+
+Performance: 0.009 ns/day, 2768.207 hours/ns, 0.100 timesteps/s
+38.6% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 761.95     | 761.95     | 761.95     |   0.0 |  7.65
+Neigh   | 5.9598     | 5.9598     | 5.9598     |   0.0 |  0.06
+Comm    | 0.11377    | 0.11377    | 0.11377    |   0.0 |  0.00
+Output  | 0.009353   | 0.009353   | 0.009353   |   0.0 |  0.00
+Modify  | 9197.4     | 9197.4     | 9197.4     |   0.0 | 92.29
+Other   |            | 0.06419    |            |       |  0.00
+
+Nlocal:           8192 ave        8192 max        8192 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           6667 ave        6667 max        6667 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:         237568 ave      237568 max      237568 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:       475136 ave      475136 max      475136 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 475136
+Ave neighs/atom = 58
+Neighbor list builds = 7000
+Dangerous builds = 0
+
+Total wall time: 2:46:06

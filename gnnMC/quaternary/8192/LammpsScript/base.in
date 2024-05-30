@@ -1,0 +1,51 @@
+units           metal
+boundary        p p p
+dimension       3
+atom_style      atomic
+
+read_data {}
+
+mass 1 95.95
+mass 2 92.90638
+mass 3 180.94788
+mass 4 183.8
+
+
+pair_style hybrid/overlay &
+mliap model nn 3_NN.txt &
+descriptor sna 3_DescriptorParam.txt &
+zbl 1.0 2.1
+pair_coeff 1 1 zbl 42.0 42.0
+pair_coeff 1 2 zbl 42.0 41.0
+pair_coeff 1 3 zbl 42.0 73.0
+pair_coeff 1 4 zbl 42.0 74.0
+pair_coeff 2 2 zbl 41.0 41.0
+pair_coeff 2 3 zbl 41.0 73.0
+pair_coeff 2 4 zbl 41.0 74.0
+pair_coeff 3 3 zbl 73.0 73.0
+pair_coeff 3 4 zbl 73.0 74.0
+pair_coeff 4 4 zbl 74.0 74.0
+pair_coeff * * mliap Mo Nb Ta W
+
+
+
+compute eng all pe/atom
+
+reset_timestep  0
+
+fix            mc1 all atom/swap 1 1 20186 1.0 types 1 2 
+
+
+thermo         100
+thermo_style   custom step temp atoms pe ke etotal
+dump           1 all custom 1  mc.*.dump id type x y z c_eng
+timestep       0.001 
+neighbor 1.0 bin
+neigh_modify every 1 delay 5 check yes
+run            0
+
+
+
+
+
+
