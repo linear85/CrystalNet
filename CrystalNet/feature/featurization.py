@@ -5,14 +5,21 @@ import torch
 
 
 class ThreeBodyFeature:
-    def __init__(self, file: str, PE=None):
+    def __init__(self, file: str, structure: str="BCC", PE=None) -> None:
         pipeline = import_file(file)
         self.data = pipeline.compute()
         if not PE:
             self.PE = self.data.particles['c_eng'][...]
         else:
             self.PE = PE
-        self.finder_third = NearestNeighborFinder(26, self.data)
+        if structure == "BCC":
+            num_neigh = 26
+        elif structure == "FCC":
+            num_neigh = 42
+        else:
+            raise Exception("Only support BCC or FCC crystal structure, but get ", structure)
+        self.structure = structure
+        self.finder_third = NearestNeighborFinder(num_neigh, self.data)
         self.types = list(self.data.particles.particle_types)
         self.graph = self.toGraph()
     
@@ -21,7 +28,10 @@ class ThreeBodyFeature:
         for idx in range(self.data.particles.count):
             neighbor = list(self.finder_third.find(idx))
             neighbor = [i.index for i in neighbor]
-            sub_graph = [set(neighbor[:8]), set(neighbor[8:14]), set(neighbor[14:])]
+            if self.structure == "BCC":
+                sub_graph = [set(neighbor[:8]),  set(neighbor[8:14]),  set(neighbor[14:])]
+            elif self.structure == "FCC":
+                sub_graph = [set(neighbor[:12]), set(neighbor[12:18]), set(neighbor[18:])]
             graph.append(sub_graph)
         return graph
     
